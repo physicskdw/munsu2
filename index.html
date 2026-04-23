@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2학년 프로그램 안내 센터</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        /* 기본 스타일 및 폰트 설정 */
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body { font-family: 'Pretendard', sans-serif; background-color: #f3f4f6; margin: 0; padding-bottom: 50px; }
+        
+        /* 상단 파란색 헤더 */
+        .header { background-color: #3b82f6; color: white; text-align: center; padding: 40px 20px 60px 20px; }
+        .header h1 { margin: 0 0 10px 0; font-size: 28px; font-weight: 700; }
+        .header p { margin: 0; font-size: 16px; opacity: 0.9; }
+        
+        /* 검색 및 필터 영역 */
+        .search-container { 
+            background: white; max-width: 800px; margin: -30px auto 20px; padding: 15px; 
+            border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+            display: flex; gap: 10px; width: 90%;
+        }
+        .search-box { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 15px; outline: none; }
+        .search-box:focus { border-color: #3b82f6; }
+        .filter-box { padding: 12px; border: 1px solid #ddd; border-radius: 5px; min-width: 130px; font-size: 15px; outline: none; }
+        
+        /* 프로그램 카드 영역 */
+        .content { max-width: 800px; margin: 0 auto; padding: 0 20px; width: 90%; }
+        .card { background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .status-badge { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; margin-bottom: 12px; }
+        .status-active { background-color: #dcfce7; color: #166534; } /* 접수중 (초록색) */
+        .status-closed { background-color: #fee2e2; color: #991b1b; } /* 마감 (빨간색) */
+        .status-default { background-color: #f3f4f6; color: #4b5563; }
+        
+        .card-title { font-size: 20px; font-weight: bold; margin: 0 0 10px 0; color: #1f2937; }
+        .card-desc { color: #4b5563; font-size: 15px; margin-bottom: 15px; white-space: pre-line; line-height: 1.5; }
+        .card-method { font-size: 14px; color: #6b7280; margin-bottom: 15px; }
+        
+        .card-link { display: inline-block; background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-size: 14px; font-weight: bold; transition: background 0.2s; }
+        .card-link:hover { background-color: #2563eb; }
+        
+        /* 에러 메시지 */
+        .error-msg { color: #dc2626; text-align: center; margin-top: 50px; display: none; font-weight: bold; }
+        
+        /* 모바일 반응형 (스마트폰 화면) */
+        @media (max-width: 600px) {
+            .search-container { flex-direction: column; }
+            .filter-box { width: 100%; box-sizing: border-box; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>2학년 프로그램 안내 센터</h1>
+        <p>프로그램 일정을 확인하고 기한 내에 신청해 주시기 바랍니다.</p>
+    </div>
+
+    <div class="search-container">
+        <input type="text" id="searchInput" class="search-box" placeholder="🔍 찾으시는 프로그램을 입력하세요...">
+        <select id="statusFilter" class="filter-box">
+            <option value="all">전체 상태보기</option>
+            <option value="접수중">접수중</option>
+            <option value="마감">마감</option>
+            <option value="예정">예정</option>
+        </select>
+    </div>
+
+    <div id="error-msg" class="error-msg">구글 시트 연동에 실패했습니다. 링크를 다시 확인해 주세요.</div>
+
+    <div class="content" id="cardContainer">
+        <p style="text-align:center; color:#666; margin-top: 50px;">데이터를 불러오는 중입니다...</p>
+    </div>
+
+    <script>
+        // ★ 여기에 1단계에서 복사한 구글 시트 CSV 링크를 따옴표 안에 붙여넣으세요! ★
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTh-3SJqvO6I8jnRT3S4lxagtVsW-rT46sW6lZcrB0ifgxnl4wi-BtkV0btOS9YvFyqAilqqW5gsRGZ/pub?gid=0&single=true&output=csv';
+        
+        let programData = [];
+
+        // 구글 시트 데이터 불러오기
+        function loadData() {
+            Papa.parse(CSV_URL, {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    // 데이터가 성공적으로 불러와지면 에러 메시지 숨김
+                    document.getElementById('error-msg').style.display = 'none';
+                    // 빈 행 제거
+                    programData = results.data.filter(row => row['프로그램명'] && row['프로그램명'].trim() !== ''); 
+                    renderCards(programData);
+                },
+                error: function() {
+                    // 실패 시 에러 메시지 표시
+                    document.getElementById('cardContainer').innerHTML = '';
+                    document.getElementById('error-msg').style.display = 'block';
+                }
+            });
+        }
+
+        // 화면에 카드 형태로 그려주기
+        function renderCards(data) {
+            const container = document.getElementById('cardContainer');
+            container.innerHTML = ''; // 기존 내용 지우기
+            
+            if(data.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:#666; margin-top:50px;">조건에 맞는 프로그램이 없습니다.</p>';
+                return;
+            }
+
+            data.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                
+                // 접수 상태에 따른 라벨 색상 설정
+                const status = (item['접수유무'] || '').trim();
+                let statusClass = 'status-default';
+                if(status === '접수중') statusClass = 'status-active';
+                else if(status === '마감') statusClass = 'status-closed';
+                
+                // 신청 링크 버튼 생성
+                let linkHtml = '';
+                const linkUrl = (item['신청링크 or 제출'] || '').trim();
+                if (linkUrl.startsWith('http')) {
+                    linkHtml = `<a href="${linkUrl}" target="_blank" class="card-link">신청하기 / 자세히 보기</a>`;
+                }
+
+                card.innerHTML = `
+                    <span class="status-badge ${statusClass}">${status || '상태 미지정'}</span>
+                    <h2 class="card-title">${item['프로그램명'] || ''}</h2>
+                    <p class="card-desc">${item['설명'] || ''}</p>
+                    <p class="card-method"><strong>접수방법:</strong> ${item['접수방법'] || '-'}</p>
+                    ${linkHtml}
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // 검색 및 상태 필터링 기능
+        function filterData() {
+            const searchText = document.getElementById('searchInput').value.toLowerCase();
+            const statusText = document.getElementById('statusFilter').value;
+
+            const filtered = programData.filter(item => {
+                const title = (item['프로그램명'] || '').toLowerCase();
+                const desc = (item['설명'] || '').toLowerCase();
+                const status = (item['접수유무'] || '').trim();
+
+                const matchSearch = title.includes(searchText) || desc.includes(searchText);
+                const matchStatus = statusText === 'all' || status === statusText;
+                
+                return matchSearch && matchStatus;
+            });
+
+            renderCards(filtered);
+        }
+
+        // 입력창이나 선택창이 바뀔 때마다 필터링 실행
+        document.getElementById('searchInput').addEventListener('input', filterData);
+        document.getElementById('statusFilter').addEventListener('change', filterData);
+
+        // 페이지가 열리면 즉시 데이터 불러오기
+        loadData();
+    </script>
+</body>
+</html>
