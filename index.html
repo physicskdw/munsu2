@@ -18,11 +18,11 @@
         .content { max-width: 800px; margin: 0 auto; padding: 0 20px; width: 90%; }
         .card { background: white; padding: 25px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         
-        /* 상태 뱃지 색상 추가 (준비중 추가) */
+        /* 상태 뱃지 색상 (준비중 추가) */
         .status-badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 800; margin-bottom: 15px; letter-spacing: 0.5px; }
-        .status-active { background-color: #dcfce7; color: #166534; } /* 접수중 (초록) */
-        .status-closed { background-color: #fee2e2; color: #991b1b; } /* 마감 (빨강) */
-        .status-ready { background-color: #fef08a; color: #854d0e; } /* 준비중 (노랑) */
+        .status-active { background-color: #dcfce7; color: #166534; } 
+        .status-closed { background-color: #fee2e2; color: #991b1b; } 
+        .status-ready { background-color: #fef08a; color: #854d0e; } 
         .status-default { background-color: #f3f4f6; color: #4b5563; }
         
         .card-title { font-size: 22px; font-weight: 800; margin: 0 0 15px 0; color: #1e293b; }
@@ -33,7 +33,7 @@
         .info-value { font-weight: 500; color: #0f172a; word-break: break-all; }
         .card-link { display: block; background-color: #3b82f6; color: white; padding: 14px 20px; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: bold; transition: background 0.2s; text-align: center; }
         .card-link:hover { background-color: #2563eb; }
-        .error-msg { color: #dc2626; text-align: center; margin-top: 50px; display: none; font-weight: bold; background: #fee2e2; padding: 20px; border-radius: 10px;}
+        .error-msg { color: #dc2626; text-align: center; margin-bottom: 20px; display: none; font-weight: bold; background: #fee2e2; padding: 20px; border-radius: 10px;}
         
         @media (max-width: 600px) { .search-container { flex-direction: column; } .filter-box { width: 100%; box-sizing: border-box; } .info-grid { grid-template-columns: 1fr; gap: 10px; padding: 15px; } }
     </style>
@@ -55,39 +55,51 @@
         </select>
     </div>
 
-    <div id="error-msg" class="error-msg"></div>
-
     <div class="content" id="cardContainer">
-        <p style="text-align:center; color:#666; margin-top: 50px;">데이터를 불러오는 중입니다...</p>
+        <div id="error-msg" class="error-msg"></div>
+        <p style="text-align:center; color:#666; margin-top: 50px;" id="loadingText">데이터를 불러오는 중입니다...</p>
     </div>
 
     <script>
-        // ★ 구글 시트 링크
+        // ★ 구글 시트 링크 (기존과 동일하다면 그대로 두셔도 됩니다)
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTh-3SJqvO6I8jnRT3S4lxagtVsW-rT46sW6lZcrB0ifgxnl4wi-BtkV0btOS9YvFyqAilqqW5gsRGZ/pub?gid=0&single=true&output=csv';
         
         let programData = [];
 
+        function showError(msg) {
+            const errorDiv = document.getElementById('error-msg');
+            const loadingText = document.getElementById('loadingText');
+            if (loadingText) loadingText.style.display = 'none'; // 로딩 텍스트 숨기기
+            errorDiv.innerHTML = msg;
+            errorDiv.style.display = 'block';
+        }
+
         function loadData() {
-            try {
-                Papa.parse(CSV_URL, {
-                    download: true,
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: function(results) {
-                        document.getElementById('error-msg').style.display = 'none';
-                        
-                        // 데이터가 아예 비어있는지 체크
+            Papa.parse(CSV_URL, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    try {
+                        // 성공적으로 연결되면 로딩 문구 제거
+                        const loadingText = document.getElementById('loadingText');
+                        if (loadingText) loadingText.style.display = 'none';
+
                         if (!results || !results.data || results.data.length === 0) {
-                            showError('구글 시트에 데이터가 없거나 형식이 잘못되었습니다. 시트 내용을 확인해주세요.');
+                            showError('구글 시트에 연결은 되었으나 데이터가 비어있습니다. 시트를 확인해주세요.');
                             return;
                         }
 
-                        let filteredData = results.data.filter(row => row['프로그램명'] && row['프로그램명'].trim() !== ''); 
-                        
-                        // 날짜 호환성을 높인 정렬 알고리즘 (-를 /로 변환하여 안전하게 파싱)
+                        // 안전한 필터링: 문자로 확실히 변환 후 빈칸 체크
+                        let filteredData = results.data.filter(row => {
+                            const progName = String(row['프로그램명'] || '').trim();
+                            return progName !== '';
+                        });
+
+                        // 안전한 날짜 정렬: 에러가 나더라도 다운되지 않도록 처리
                         filteredData.sort((a, b) => {
-                            let dateStrA = (a['시작일'] || '').replace(/-/g, '/');
-                            let dateStrB = (b['시작일'] || '').replace(/-/g, '/');
+                            let dateStrA = String(a['시작일'] || '').replace(/-/g, '/');
+                            let dateStrB = String(b['시작일'] || '').replace(/-/g, '/');
                             
                             let valA = Date.parse(dateStrA);
                             let valB = Date.parse(dateStrB);
@@ -95,27 +107,31 @@
                             valA = isNaN(valA) ? 0 : valA;
                             valB = isNaN(valB) ? 0 : valB;
                             
-                            return valB - valA; // 내림차순 (최신순)
+                            return valB - valA; // 내림차순 (최신순 정렬)
                         });
 
                         programData = filteredData;
                         renderCards(programData);
-                    },
-                    error: function(err) {
-                        showError('구글 시트의 데이터를 가져오는 데 실패했습니다.<br>구글 시트의 "웹에 게시" 설정이 켜져 있는지 확인해 주세요.');
+
+                    } catch (error) {
+                        showError('데이터를 화면에 그리는 도중 문제가 발생했습니다.<br>상세 원인: ' + error.message);
                     }
-                });
-            } catch (error) {
-                showError('스크립트 실행 중 문제가 발생했습니다.');
-            }
+                },
+                error: function(err) {
+                    // 인터넷이 차단되었거나 주소가 틀렸을 때 이곳으로 빠집니다.
+                    showError('구글 시트 연결에 실패했습니다.<br>1. 학교 인터넷(방화벽)에서 차단되었을 수 있습니다. (스마트폰 데이터로 확인 요망)<br>2. 구글 시트 "웹에 게시" 링크가 끊겼을 수 있습니다.<br>상세 에러: ' + err.message);
+                }
+            });
         }
 
         function renderCards(data) {
             const container = document.getElementById('cardContainer');
-            container.innerHTML = ''; 
+            // 기존 카드들 지우기 (에러 메시지는 살려둠)
+            const oldCards = container.querySelectorAll('.card, .empty-msg');
+            oldCards.forEach(card => card.remove());
             
             if(data.length === 0) {
-                container.innerHTML = '<p style="text-align:center; color:#666; margin-top:50px;">조건에 맞는 프로그램이 없습니다.</p>';
+                container.insertAdjacentHTML('beforeend', '<p class="empty-msg" style="text-align:center; color:#666; margin-top:50px;">조건에 맞는 프로그램이 없습니다.</p>');
                 return;
             }
 
@@ -124,20 +140,18 @@
                 card.className = 'card';
                 
                 // 접수 상태에 따른 라벨 색상 설정 (준비중 추가)
-                const status = (item['접수유무'] || '').trim();
+                const status = String(item['접수유무'] || '').trim();
                 let statusClass = 'status-default';
                 if(status === '접수중') statusClass = 'status-active';
                 else if(status === '마감') statusClass = 'status-closed';
                 else if(status === '준비중') statusClass = 'status-ready';
                 
-                // 신청 링크 버튼 생성
                 let linkHtml = '';
-                const linkUrl = (item['신청링크 or 제출'] || '').trim();
+                const linkUrl = String(item['신청링크 or 제출'] || '').trim();
                 if (linkUrl.startsWith('http')) {
                     linkHtml = `<a href="${linkUrl}" target="_blank" class="card-link">신청하기 / 자세히 보기</a>`;
                 }
 
-                // 시작일~마감일 텍스트 조합
                 const startDate = item['시작일'] || '';
                 const endDate = item['마감일'] || '';
                 let dateRange = '일정 미정';
@@ -183,10 +197,10 @@
             const statusText = document.getElementById('statusFilter').value;
 
             const filtered = programData.filter(item => {
-                const title = (item['프로그램명'] || '').toLowerCase();
-                const contact = (item['문의처'] || '').toLowerCase(); 
-                const target = (item['대상'] || '').toLowerCase(); 
-                const status = (item['접수유무'] || '').trim();
+                const title = String(item['프로그램명'] || '').toLowerCase();
+                const contact = String(item['문의처'] || '').toLowerCase(); 
+                const target = String(item['대상'] || '').toLowerCase(); 
+                const status = String(item['접수유무'] || '').trim();
 
                 const matchSearch = title.includes(searchText) || contact.includes(searchText) || target.includes(searchText);
                 const matchStatus = statusText === 'all' || status === statusText;
@@ -197,21 +211,10 @@
             renderCards(filtered);
         }
 
-        function showError(msg) {
-            document.getElementById('cardContainer').innerHTML = '';
-            const errorDiv = document.getElementById('error-msg');
-            errorDiv.innerHTML = msg;
-            errorDiv.style.display = 'block';
-        }
+        document.getElementById('searchInput').addEventListener('input', filterData);
+        document.getElementById('statusFilter').addEventListener('change', filterData);
 
-        const searchInput = document.getElementById('searchInput');
-        const statusFilter = document.getElementById('statusFilter');
-        
-        if (searchInput && statusFilter) {
-            searchInput.addEventListener('input', filterData);
-            statusFilter.addEventListener('change', filterData);
-        }
-
+        // 실행
         loadData();
     </script>
 </body>
