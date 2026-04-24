@@ -84,4 +84,135 @@
 
                         let filteredData = results.data.filter(row => row['프로그램명'] && row['프로그램명'].trim() !== ''); 
                         
-                        // 날짜 호환성을 높
+                        // 날짜 호환성을 높인 정렬 알고리즘 (-를 /로 변환하여 안전하게 파싱)
+                        filteredData.sort((a, b) => {
+                            let dateStrA = (a['시작일'] || '').replace(/-/g, '/');
+                            let dateStrB = (b['시작일'] || '').replace(/-/g, '/');
+                            
+                            let valA = Date.parse(dateStrA);
+                            let valB = Date.parse(dateStrB);
+                            
+                            valA = isNaN(valA) ? 0 : valA;
+                            valB = isNaN(valB) ? 0 : valB;
+                            
+                            return valB - valA; // 내림차순 (최신순)
+                        });
+
+                        programData = filteredData;
+                        renderCards(programData);
+                    },
+                    error: function(err) {
+                        showError('구글 시트의 데이터를 가져오는 데 실패했습니다.<br>구글 시트의 "웹에 게시" 설정이 켜져 있는지 확인해 주세요.');
+                    }
+                });
+            } catch (error) {
+                showError('스크립트 실행 중 문제가 발생했습니다.');
+            }
+        }
+
+        function renderCards(data) {
+            const container = document.getElementById('cardContainer');
+            container.innerHTML = ''; 
+            
+            if(data.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:#666; margin-top:50px;">조건에 맞는 프로그램이 없습니다.</p>';
+                return;
+            }
+
+            data.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                
+                // 접수 상태에 따른 라벨 색상 설정 (준비중 추가)
+                const status = (item['접수유무'] || '').trim();
+                let statusClass = 'status-default';
+                if(status === '접수중') statusClass = 'status-active';
+                else if(status === '마감') statusClass = 'status-closed';
+                else if(status === '준비중') statusClass = 'status-ready';
+                
+                // 신청 링크 버튼 생성
+                let linkHtml = '';
+                const linkUrl = (item['신청링크 or 제출'] || '').trim();
+                if (linkUrl.startsWith('http')) {
+                    linkHtml = `<a href="${linkUrl}" target="_blank" class="card-link">신청하기 / 자세히 보기</a>`;
+                }
+
+                // 시작일~마감일 텍스트 조합
+                const startDate = item['시작일'] || '';
+                const endDate = item['마감일'] || '';
+                let dateRange = '일정 미정';
+                if (startDate && endDate) dateRange = `${startDate} ~ ${endDate}`;
+                else if (startDate) dateRange = startDate;
+                else if (endDate) dateRange = `~ ${endDate}`;
+
+                card.innerHTML = `
+                    <span class="status-badge ${statusClass}">${status || '상태 미지정'}</span>
+                    <h2 class="card-title">${item['프로그램명'] || ''}</h2>
+                    
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-icon">👥</span>
+                            <span class="info-label">대상</span>
+                            <span class="info-value">${item['대상'] || '전체'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-icon">🗓️</span>
+                            <span class="info-label">일정</span>
+                            <span class="info-value">${dateRange}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-icon">📞</span>
+                            <span class="info-label">문의</span>
+                            <span class="info-value">${item['문의처'] || '-'}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-icon">📝</span>
+                            <span class="info-label">방법</span>
+                            <span class="info-value">${item['접수방법'] || '-'}</span>
+                        </div>
+                    </div>
+
+                    ${linkHtml}
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function filterData() {
+            const searchText = document.getElementById('searchInput').value.toLowerCase();
+            const statusText = document.getElementById('statusFilter').value;
+
+            const filtered = programData.filter(item => {
+                const title = (item['프로그램명'] || '').toLowerCase();
+                const contact = (item['문의처'] || '').toLowerCase(); 
+                const target = (item['대상'] || '').toLowerCase(); 
+                const status = (item['접수유무'] || '').trim();
+
+                const matchSearch = title.includes(searchText) || contact.includes(searchText) || target.includes(searchText);
+                const matchStatus = statusText === 'all' || status === statusText;
+                
+                return matchSearch && matchStatus;
+            });
+
+            renderCards(filtered);
+        }
+
+        function showError(msg) {
+            document.getElementById('cardContainer').innerHTML = '';
+            const errorDiv = document.getElementById('error-msg');
+            errorDiv.innerHTML = msg;
+            errorDiv.style.display = 'block';
+        }
+
+        const searchInput = document.getElementById('searchInput');
+        const statusFilter = document.getElementById('statusFilter');
+        
+        if (searchInput && statusFilter) {
+            searchInput.addEventListener('input', filterData);
+            statusFilter.addEventListener('change', filterData);
+        }
+
+        loadData();
+    </script>
+</body>
+</html>
