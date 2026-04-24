@@ -17,9 +17,71 @@
         .filter-box { padding: 12px; border: 1px solid #ddd; border-radius: 5px; min-width: 130px; font-size: 15px; outline: none; }
         .content { max-width: 800px; margin: 0 auto; padding: 0 20px; width: 90%; }
         .card { background: white; padding: 25px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        
+        /* 상태 뱃지 색상 추가 (준비중 추가) */
         .status-badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 800; margin-bottom: 15px; letter-spacing: 0.5px; }
-        .status-active { background-color: #dcfce7; color: #166534; } 
-        .status-closed { background-color: #fee2e2; color: #991b1b; } 
+        .status-active { background-color: #dcfce7; color: #166534; } /* 접수중 (초록) */
+        .status-closed { background-color: #fee2e2; color: #991b1b; } /* 마감 (빨강) */
+        .status-ready { background-color: #fef08a; color: #854d0e; } /* 준비중 (노랑) */
         .status-default { background-color: #f3f4f6; color: #4b5563; }
+        
         .card-title { font-size: 22px; font-weight: 800; margin: 0 0 15px 0; color: #1e293b; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; background-color: #f8
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; background-color: #f8fafc; padding: 18px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
+        .info-item { display: flex; align-items: center; font-size: 15px; color: #334155; }
+        .info-icon { font-size: 16px; margin-right: 8px; }
+        .info-label { font-weight: 700; color: #64748b; min-width: 45px; margin-right: 8px; }
+        .info-value { font-weight: 500; color: #0f172a; word-break: break-all; }
+        .card-link { display: block; background-color: #3b82f6; color: white; padding: 14px 20px; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: bold; transition: background 0.2s; text-align: center; }
+        .card-link:hover { background-color: #2563eb; }
+        .error-msg { color: #dc2626; text-align: center; margin-top: 50px; display: none; font-weight: bold; background: #fee2e2; padding: 20px; border-radius: 10px;}
+        
+        @media (max-width: 600px) { .search-container { flex-direction: column; } .filter-box { width: 100%; box-sizing: border-box; } .info-grid { grid-template-columns: 1fr; gap: 10px; padding: 15px; } }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>문수고 2학년 프로그램 안내 센터</h1>
+        <p>프로그램 일정을 확인하고 기한 내에 신청해 주시기 바랍니다.</p>
+    </div>
+
+    <div class="search-container">
+        <input type="text" id="searchInput" class="search-box" placeholder="🔍 프로그램명, 문의처, 대상을 검색하세요...">
+        <select id="statusFilter" class="filter-box">
+            <option value="all">전체 상태보기</option>
+            <option value="접수중">접수중</option>
+            <option value="마감">마감</option>
+            <option value="준비중">준비중</option> 
+        </select>
+    </div>
+
+    <div id="error-msg" class="error-msg"></div>
+
+    <div class="content" id="cardContainer">
+        <p style="text-align:center; color:#666; margin-top: 50px;">데이터를 불러오는 중입니다...</p>
+    </div>
+
+    <script>
+        // ★ 구글 시트 링크
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTh-3SJqvO6I8jnRT3S4lxagtVsW-rT46sW6lZcrB0ifgxnl4wi-BtkV0btOS9YvFyqAilqqW5gsRGZ/pub?gid=0&single=true&output=csv';
+        
+        let programData = [];
+
+        function loadData() {
+            try {
+                Papa.parse(CSV_URL, {
+                    download: true,
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        document.getElementById('error-msg').style.display = 'none';
+                        
+                        // 데이터가 아예 비어있는지 체크
+                        if (!results || !results.data || results.data.length === 0) {
+                            showError('구글 시트에 데이터가 없거나 형식이 잘못되었습니다. 시트 내용을 확인해주세요.');
+                            return;
+                        }
+
+                        let filteredData = results.data.filter(row => row['프로그램명'] && row['프로그램명'].trim() !== ''); 
+                        
+                        // 날짜 호환성을 높
