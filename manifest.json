@@ -1,19 +1,21 @@
 {
-  "short_name": "문수고2학년",
+  "short_name": "문수고2",
   "name": "문수고 2학년 프로그램 안내 센터",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "scope": "./",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "./icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "icon-512.png",
+      "src": "./icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
-  ]
+  ],
+  "start_url": "./index.html",
+  "display": "standalone",
+  "scope": "./",
+  "theme_color": "#3b82f6",
+  "background_color": "#ffffff"
 }
