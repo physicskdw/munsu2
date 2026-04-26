@@ -18,7 +18,7 @@
         .content { max-width: 800px; margin: 0 auto; padding: 0 20px; width: 90%; }
         .card { background: white; padding: 25px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         
-        /* 상태 뱃지 색상 (준비중 추가) */
+        /* 상태 뱃지 색상 */
         .status-badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 800; margin-bottom: 15px; letter-spacing: 0.5px; }
         .status-active { background-color: #dcfce7; color: #166534; } 
         .status-closed { background-color: #fee2e2; color: #991b1b; } 
@@ -31,8 +31,14 @@
         .info-icon { font-size: 16px; margin-right: 8px; }
         .info-label { font-weight: 700; color: #64748b; min-width: 45px; margin-right: 8px; }
         .info-value { font-weight: 500; color: #0f172a; word-break: break-all; }
+        
+        /* 버튼 스타일 */
         .card-link { display: block; background-color: #3b82f6; color: white; padding: 14px 20px; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: bold; transition: background 0.2s; text-align: center; }
         .card-link:hover { background-color: #2563eb; }
+        
+        /* ★ 추가된 비활성화 버튼 스타일 */
+        .card-link.disabled { background-color: #9ca3af; pointer-events: none; cursor: not-allowed; }
+        
         .error-msg { color: #dc2626; text-align: center; margin-bottom: 20px; display: none; font-weight: bold; background: #fee2e2; padding: 20px; border-radius: 10px;}
         
         @media (max-width: 600px) { .search-container { flex-direction: column; } .filter-box { width: 100%; box-sizing: border-box; } .info-grid { grid-template-columns: 1fr; gap: 10px; padding: 15px; } }
@@ -61,7 +67,6 @@
     </div>
 
     <script>
-        // ★ 구글 시트 링크 (기존과 동일하다면 그대로 두셔도 됩니다)
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTh-3SJqvO6I8jnRT3S4lxagtVsW-rT46sW6lZcrB0ifgxnl4wi-BtkV0btOS9YvFyqAilqqW5gsRGZ/pub?gid=0&single=true&output=csv';
         
         let programData = [];
@@ -69,7 +74,7 @@
         function showError(msg) {
             const errorDiv = document.getElementById('error-msg');
             const loadingText = document.getElementById('loadingText');
-            if (loadingText) loadingText.style.display = 'none'; // 로딩 텍스트 숨기기
+            if (loadingText) loadingText.style.display = 'none'; 
             errorDiv.innerHTML = msg;
             errorDiv.style.display = 'block';
         }
@@ -81,7 +86,6 @@
                 skipEmptyLines: true,
                 complete: function(results) {
                     try {
-                        // 성공적으로 연결되면 로딩 문구 제거
                         const loadingText = document.getElementById('loadingText');
                         if (loadingText) loadingText.style.display = 'none';
 
@@ -90,13 +94,11 @@
                             return;
                         }
 
-                        // 안전한 필터링: 문자로 확실히 변환 후 빈칸 체크
                         let filteredData = results.data.filter(row => {
                             const progName = String(row['프로그램명'] || '').trim();
                             return progName !== '';
                         });
 
-                        // 안전한 날짜 정렬: 에러가 나더라도 다운되지 않도록 처리
                         filteredData.sort((a, b) => {
                             let dateStrA = String(a['시작일'] || '').replace(/-/g, '/');
                             let dateStrB = String(b['시작일'] || '').replace(/-/g, '/');
@@ -107,7 +109,7 @@
                             valA = isNaN(valA) ? 0 : valA;
                             valB = isNaN(valB) ? 0 : valB;
                             
-                            return valB - valA; // 내림차순 (최신순 정렬)
+                            return valB - valA; 
                         });
 
                         programData = filteredData;
@@ -118,7 +120,6 @@
                     }
                 },
                 error: function(err) {
-                    // 인터넷이 차단되었거나 주소가 틀렸을 때 이곳으로 빠집니다.
                     showError('구글 시트 연결에 실패했습니다.<br>1. 학교 인터넷(방화벽)에서 차단되었을 수 있습니다. (스마트폰 데이터로 확인 요망)<br>2. 구글 시트 "웹에 게시" 링크가 끊겼을 수 있습니다.<br>상세 에러: ' + err.message);
                 }
             });
@@ -126,7 +127,6 @@
 
         function renderCards(data) {
             const container = document.getElementById('cardContainer');
-            // 기존 카드들 지우기 (에러 메시지는 살려둠)
             const oldCards = container.querySelectorAll('.card, .empty-msg');
             oldCards.forEach(card => card.remove());
             
@@ -139,7 +139,6 @@
                 const card = document.createElement('div');
                 card.className = 'card';
                 
-                // 접수 상태에 따른 라벨 색상 설정 (준비중 추가)
                 const status = String(item['접수유무'] || '').trim();
                 let statusClass = 'status-default';
                 if(status === '접수중') statusClass = 'status-active';
@@ -149,7 +148,12 @@
                 let linkHtml = '';
                 const linkUrl = String(item['신청링크 or 제출'] || '').trim();
                 if (linkUrl.startsWith('http')) {
-                    linkHtml = `<a href="${linkUrl}" target="_blank" class="card-link">신청하기 / 자세히 보기</a>`;
+                    // ★ 마감일 경우 버튼 비활성화 처리 부분
+                    if (status === '마감') {
+                        linkHtml = `<a href="#" class="card-link disabled" onclick="return false;">신청이 마감되었습니다</a>`;
+                    } else {
+                        linkHtml = `<a href="${linkUrl}" target="_blank" class="card-link">신청하기 / 자세히 보기</a>`;
+                    }
                 }
 
                 const startDate = item['시작일'] || '';
@@ -214,7 +218,6 @@
         document.getElementById('searchInput').addEventListener('input', filterData);
         document.getElementById('statusFilter').addEventListener('change', filterData);
 
-        // 실행
         loadData();
     </script>
 </body>
