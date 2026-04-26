@@ -43,12 +43,11 @@
         
         @media (max-width: 600px) { .search-container { flex-direction: column; } .filter-box { width: 100%; box-sizing: border-box; } .info-grid { grid-template-columns: 1fr; gap: 10px; padding: 15px; } }
     </style>
-    <link rel="manifest" href="/munsu2/manifest.json">
-
-<script>
+    <link rel="manifest" href="manifest.json"> <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/munsu2/sw.js')
+      // 경로를 상대 경로인 'sw.js'로 수정
+      navigator.serviceWorker.register('sw.js')
         .then(reg => console.log('Service Worker Registered!', reg))
         .catch(err => console.log('Service Worker registration failed:', err));
     });
