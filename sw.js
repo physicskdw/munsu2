@@ -1,10 +1,9 @@
-const CACHE_NAME = 'munsu2-v1';
+const CACHE_NAME = 'munsu2-v2';
 const urlsToCache = [
-  './',
-  './index.html',
-  './manifest.json',
-  './icon-192.png',
-  './icon-512.png'
+  '/munsu2/index.html',
+  '/munsu2/manifest.json',
+  '/munsu2/icon-192.png',
+  '/munsu2/icon-512.png'
 ];
 
 self.addEventListener('install', event => {
