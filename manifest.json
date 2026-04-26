@@ -1,0 +1,21 @@
+{
+  "short_name": "문수고물리",
+  "name": "문수고등학교 물리 학습 도구",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/munsu2/",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "scope": "/munsu2/",
+  "theme_color": "#4A90E2"
+}
