@@ -19,13 +19,16 @@
         .card { background: white; padding: 25px; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         
         /* 상태 뱃지 색상 */
-        .status-badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 800; margin-bottom: 15px; letter-spacing: 0.5px; }
+        .status-badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 800; letter-spacing: 0.5px; }
         .status-active { background-color: #dcfce7; color: #166534; } 
         .status-closed { background-color: #fee2e2; color: #991b1b; } 
         .status-ready { background-color: #fef08a; color: #854d0e; } 
         .status-default { background-color: #f3f4f6; color: #4b5563; }
         
-        .card-title { font-size: 22px; font-weight: 800; margin: 0 0 15px 0; color: #1e293b; }
+        /* ★ 추가된 NEW 뱃지 스타일 */
+        .badge-new { background-color: #ef4444; color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 800; margin-left: 8px; vertical-align: middle; }
+
+        .card-title { font-size: 22px; font-weight: 800; margin: 15px 0; color: #1e293b; }
         .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; background-color: #f8fafc; padding: 18px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
         .info-item { display: flex; align-items: center; font-size: 15px; color: #334155; }
         .info-icon { font-size: 16px; margin-right: 8px; }
@@ -36,7 +39,7 @@
         .card-link { display: block; background-color: #3b82f6; color: white; padding: 14px 20px; text-decoration: none; border-radius: 8px; font-size: 15px; font-weight: bold; transition: background 0.2s; text-align: center; }
         .card-link:hover { background-color: #2563eb; }
         
-        /* ★ 추가된 비활성화 버튼 스타일 */
+        /* 비활성화 버튼 스타일 */
         .card-link.disabled { background-color: #9ca3af; pointer-events: none; cursor: not-allowed; }
         
         .error-msg { color: #dc2626; text-align: center; margin-bottom: 20px; display: none; font-weight: bold; background: #fee2e2; padding: 20px; border-radius: 10px;}
@@ -157,14 +160,36 @@
                 
                 let linkHtml = '';
                 const linkUrl = String(item['신청링크 or 제출'] || '').trim();
-                if (linkUrl.startsWith('http')) {
-                    // ★ 마감일 경우 버튼 비활성화 처리 부분
-                    if (status === '마감') {
-                        linkHtml = `<a href="#" class="card-link disabled" onclick="return false;">신청이 마감되었습니다</a>`;
-                    } else {
+                
+                // ★ 마감일 경우와 준비중일 경우 버튼 비활성화 처리
+                if (status === '마감') {
+                    linkHtml = `<a href="#" class="card-link disabled" onclick="return false;">신청이 마감되었습니다</a>`;
+                } else if (status === '준비중') {
+                    linkHtml = `<a href="#" class="card-link disabled" onclick="return false;">준비 중입니다</a>`;
+                } else {
+                    if (linkUrl.startsWith('http')) {
                         linkHtml = `<a href="${linkUrl}" target="_blank" class="card-link">신청하기 / 자세히 보기</a>`;
+                    } else {
+                        linkHtml = `<a href="#" class="card-link disabled" onclick="return false;">링크 없음</a>`;
                     }
                 }
+
+                // ★ NEW 뱃지 표시 로직 (1일 이내인지 판단)
+                let isNew = false;
+                let targetDateStr = item['타임스탬프'] || item['등록일'] || item['시작일'] || '';
+                
+                if (targetDateStr) {
+                    let targetDate = new Date(String(targetDateStr).replace(/-/g, '/'));
+                    let now = new Date();
+                    // 등록일과 현재 날짜의 차이 계산 (일 단위)
+                    let diffDays = (now - targetDate) / (1000 * 60 * 60 * 24);
+                    
+                    // 1일(24시간) 이내인 경우 NEW 표시 (미래 날짜일 가능성 대비 여유 조건 포함)
+                    if (diffDays <= 1 && diffDays >= -2) {
+                        isNew = true;
+                    }
+                }
+                const newBadgeHtml = isNew ? `<span class="badge-new">NEW</span>` : '';
 
                 const startDate = item['시작일'] || '';
                 const endDate = item['마감일'] || '';
@@ -174,7 +199,10 @@
                 else if (endDate) dateRange = `~ ${endDate}`;
 
                 card.innerHTML = `
-                    <span class="status-badge ${statusClass}">${status || '상태 미지정'}</span>
+                    <div style="display:flex; align-items:center;">
+                        <span class="status-badge ${statusClass}">${status || '상태 미지정'}</span>
+                        ${newBadgeHtml}
+                    </div>
                     <h2 class="card-title">${item['프로그램명'] || ''}</h2>
                     
                     <div class="info-grid">
