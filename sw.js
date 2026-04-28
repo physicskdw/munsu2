@@ -1,4 +1,4 @@
-const CACHE_NAME = 'munsu2-v4';
+const CACHE_NAME = 'munsu2-v5';
 const urlsToCache = [
   '/munsu2/index.html',
   '/munsu2/manifest.json',
