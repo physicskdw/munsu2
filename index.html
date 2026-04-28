@@ -112,7 +112,27 @@
                             return progName !== '';
                         });
 
+                        // ★ 정렬 로직 수정: 상태 우선 정렬 후 날짜 정렬
                         filteredData.sort((a, b) => {
+                            // 1. 상태별 가중치 부여 (낮을수록 상단에 배치)
+                            const getStatusWeight = (status) => {
+                                if (status === '접수중') return 1;
+                                if (status === '준비중') return 2;
+                                if (status === '마감') return 3;
+                                return 4; // 상태가 없거나 다른 텍스트일 경우 가장 아래로
+                            };
+
+                            const statusA = String(a['접수유무'] || '').trim();
+                            const statusB = String(b['접수유무'] || '').trim();
+                            const weightA = getStatusWeight(statusA);
+                            const weightB = getStatusWeight(statusB);
+
+                            // 가중치가 다르면 상태를 기준으로 먼저 정렬
+                            if (weightA !== weightB) {
+                                return weightA - weightB; 
+                            }
+
+                            // 2. 상태가 동일하면 기존처럼 시작일이 늦은 순(내림차순)으로 정렬
                             let dateStrA = String(a['시작일'] || '').replace(/-/g, '/');
                             let dateStrB = String(b['시작일'] || '').replace(/-/g, '/');
                             
@@ -161,7 +181,7 @@
                 let linkHtml = '';
                 const linkUrl = String(item['신청링크 or 제출'] || '').trim();
                 
-                // ★ 마감일 경우와 준비중일 경우 버튼 비활성화 처리
+                // 마감일 경우와 준비중일 경우 버튼 비활성화 처리
                 if (status === '마감') {
                     linkHtml = `<a href="#" class="card-link disabled" onclick="return false;">신청이 마감되었습니다</a>`;
                 } else if (status === '준비중') {
@@ -174,7 +194,7 @@
                     }
                 }
 
-                // ★ NEW 뱃지 표시 로직 (1일 이내인지 판단)
+                // NEW 뱃지 표시 로직 (1일 이내인지 판단)
                 let isNew = false;
                 let targetDateStr = item['타임스탬프'] || item['등록일'] || item['시작일'] || '';
                 
@@ -250,6 +270,7 @@
                 return matchSearch && matchStatus;
             });
 
+            // 검색이나 필터링 후에도 동일하게 정렬되도록 필터링 후 다시 렌더링 호출
             renderCards(filtered);
         }
 
